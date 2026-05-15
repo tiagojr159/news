@@ -230,6 +230,36 @@
       transform: scale(1.05);
     }
 
+    .voice-select {
+      width: 180px;
+      background: rgba(0, 0, 0, 0.45);
+      border: 2px solid #00d4ff;
+      color: #00d4ff;
+      padding: 8px 10px;
+      border-radius: 8px;
+      font-size: 13px;
+      outline: none;
+      cursor: pointer;
+    }
+
+    .voice-select option {
+      color: #111;
+    }
+
+    .voice-status {
+      width: 180px;
+      box-sizing: border-box;
+      background: rgba(0, 0, 0, 0.45);
+      border: 1px solid rgba(0, 212, 255, 0.55);
+      border-radius: 8px;
+      padding: 6px 8px;
+      color: #c9f6ff;
+      font-size: 12px;
+      line-height: 1.2;
+      text-align: center;
+      opacity: 1;
+    }
+
     @media (max-width: 768px) {
   .container {
     width: min(92vw, 640px);
@@ -296,6 +326,18 @@
     font-size: 11px;
   }
 
+  .voice-select {
+    width: 132px;
+    font-size: 11px;
+    padding: 6px 8px;
+  }
+
+  .voice-status {
+    width: 132px;
+    font-size: 10px;
+    padding: 5px 6px;
+  }
+
   .info {
     margin-top: 14px;
     line-height: 1.25;
@@ -314,7 +356,7 @@
       🌍 Planeta Terra • Rotação: 24 horas<br>
       <small>☕ Arraste para girar • 🔊 Toque e arraste no celular</small>
     </div>
-    <button class="moon-button" onclick="ouvirTodas()" title="Ouvir Manchetes"></button>
+    <button type="button" class="moon-button" title="Ouvir Manchetes"></button>
 
     <?php
     function carregarRSS($url)
@@ -422,6 +464,12 @@
 
 
   <div class="fixed-buttons">
+    <select id="voiceSelect" class="voice-select" aria-label="Voz" autocomplete="off">
+      <option value="pt-BR-AntonioNeural" selected>Antonio Neural</option>
+      <option value="pt-BR-FranciscaNeural">Francisca Neural</option>
+      <option value="pt-BR-ThalitaMultilingualNeural">Thalita Neural</option>
+    </select>
+    <div id="voiceStatus" class="voice-status">Antonio Neural</div>
     <button onclick="window.location.href='noticias.php'">📰 Notícias</button>
     <button onclick="window.location.href='sobre.php'">ℹ️ Sobre</button>
   </div>
@@ -442,6 +490,10 @@
     earthImage.crossOrigin = 'anonymous';
     earthImage.src = 'https://i0.wp.com/narceliodesa.com/wp-content/uploads/2019/10/11.jpg?fit=750%2C410&ssl=1';
 
+    const ttsEndpoint = 'api/tts/';
+    const voiceSelect = document.getElementById('voiceSelect');
+    const voiceStatus = document.getElementById('voiceStatus');
+    let currentAudio = null;
     const labels = Array.from({ length: 10 }, (_, i) => document.getElementById('label' + i)).filter(Boolean);
     const labelRadius = radius + 120;
 
@@ -463,7 +515,7 @@
     }
 
     function getVisibleLabelCount() {
-      if (window.innerWidth <= 480) return 4;
+      if (window.innerWidth <= 480) return 7;
       if (window.innerWidth <= 768) return 6;
       return labels.length;
     }
@@ -569,15 +621,132 @@
 
     canvas.addEventListener('touchend', () => { isDragging = false; });
 
-    function ouvirTodas(index = 0) {
-      if (!('speechSynthesis' in window)) return;
-      const textos = labels.map(label => label.textContent);
-      if (index >= textos.length) return;
-      const msg = new SpeechSynthesisUtterance(textos[index]);
-      msg.lang = 'pt-BR';
-      msg.rate = 2.6;
-      msg.onend = () => ouvirTodas(index + 1);
-      speechSynthesis.speak(msg);
+    function getSelectedVoice() {
+      return voiceSelect?.value || 'pt-BR-AntonioNeural';
+    }
+
+    function getSelectedVoiceLabel() {
+      return voiceSelect?.selectedOptions?.[0]?.textContent || 'Antonio Neural';
+    }
+
+    function setSelectedVoice(voice) {
+      if (!voiceSelect) return;
+      const hasVoice = Array.from(voiceSelect.options).some(option => option.value === voice);
+      voiceSelect.value = hasVoice ? voice : 'pt-BR-AntonioNeural';
+      updateVoiceStatus(getSelectedVoiceLabel());
+    }
+
+    function updateVoiceStatus(text) {
+      if (voiceStatus) {
+        voiceStatus.textContent = text;
+      }
+    }
+
+    if (voiceSelect) {
+      setSelectedVoice(localStorage.getItem('newsVoice') || 'pt-BR-AntonioNeural');
+      voiceSelect.addEventListener('change', () => {
+        localStorage.setItem('newsVoice', getSelectedVoice());
+        updateVoiceStatus(getSelectedVoiceLabel());
+      });
+    } else {
+      updateVoiceStatus(getSelectedVoiceLabel());
+    }
+
+    function stopCurrentAudio() {
+      if (!currentAudio) return;
+      currentAudio.pause();
+      currentAudio.currentTime = 0;
+      if (currentAudio.dataset.url) {
+        URL.revokeObjectURL(currentAudio.dataset.url);
+      }
+      currentAudio = null;
+    }
+
+    async function playTts(text, cancelCurrent = true) {
+      if (cancelCurrent) {
+        stopCurrentAudio();
+      }
+
+      try {
+        const form = new FormData();
+        form.append('text', text);
+        form.append('voice', getSelectedVoice());
+
+        updateVoiceStatus('Gerando ' + getSelectedVoiceLabel());
+
+        const response = await fetch(ttsEndpoint, {
+          method: 'POST',
+          body: form
+        });
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.warn('TTS neural indisponivel:', errorText);
+          let errorMessage = 'Neural indisponivel';
+          try {
+            const errorJson = JSON.parse(errorText);
+            if (errorJson.error) {
+              errorMessage = errorJson.error.includes('AZURE_SPEECH_KEY')
+                ? 'Configure a chave Azure'
+                : errorJson.error;
+            }
+          } catch (error) {
+            // Mantem a mensagem curta quando a resposta nao vier em JSON.
+          }
+          updateVoiceStatus(errorMessage);
+          return false;
+        }
+
+        const blob = await response.blob();
+        if (!blob || !blob.size) {
+          updateVoiceStatus('Audio neural vazio');
+          return false;
+        }
+
+        const audioUrl = URL.createObjectURL(blob);
+        const audio = new Audio(audioUrl);
+        audio.dataset.url = audioUrl;
+        currentAudio = audio;
+
+        return await new Promise((resolve) => {
+          audio.addEventListener('ended', () => {
+            URL.revokeObjectURL(audioUrl);
+            if (currentAudio === audio) currentAudio = null;
+            updateVoiceStatus(getSelectedVoiceLabel());
+            resolve(true);
+          }, { once: true });
+
+          audio.addEventListener('error', () => {
+            URL.revokeObjectURL(audioUrl);
+            if (currentAudio === audio) currentAudio = null;
+            updateVoiceStatus('Nao consegui tocar neural');
+            resolve(false);
+          }, { once: true });
+
+          audio.play().catch((error) => {
+            console.warn('Falha ao tocar audio neural:', error);
+            URL.revokeObjectURL(audioUrl);
+            if (currentAudio === audio) currentAudio = null;
+            updateVoiceStatus('Clique de novo para tocar');
+            resolve(false);
+          });
+        });
+      } catch (error) {
+        console.warn('Falha ao chamar TTS neural:', error);
+        updateVoiceStatus('Erro no TTS neural');
+        return false;
+      }
+    }
+
+    async function ouvirTodas(index = 0) {
+      const textos = labels.map(label => label.textContent.trim()).filter(Boolean);
+      if (index === 0) {
+        stopCurrentAudio();
+      }
+      for (let i = index; i < textos.length; i++) {
+        const tocou = await playTts(textos[i], false);
+        if (!tocou) break;
+      }
     }
 
 
@@ -616,13 +785,8 @@
       }
     }
 
-    function falarUltimaNoticia(texto) {
-      if (!('speechSynthesis' in window)) return;
-      const msg = new SpeechSynthesisUtterance("Última notícia: " + texto);
-      msg.lang = 'pt-BR';
-      msg.rate = 2.6;
-      speechSynthesis.cancel(); // cancela falas anteriores
-      speechSynthesis.speak(msg);
+    async function falarUltimaNoticia(texto) {
+      await playTts("Última notícia: " + texto);
     }
 
     function calcularTempoDecorrido(timestamp) {
@@ -642,6 +806,12 @@
 
     let moonAngle = 0; // ângulo inicial da lua
     const moon = document.querySelector('.moon-button');
+    if (moon) {
+      moon.addEventListener('click', (e) => {
+        e.preventDefault();
+        ouvirTodas(0);
+      });
+    }
     animateMoon();
 
     function animateMoon() {
