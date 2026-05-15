@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Últimas Notícias Internacionais - Tempo Real</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            margin: 0;
+            min-height: 100vh;
+        }
+        h2 {
+            color: #ffffff;
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 2.2em;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .loading {
+            text-align: center;
+            color: #ffffff;
+            font-size: 1.2em;
+            margin: 20px 0;
+        }
+        .stats {
+            background: rgba(255,255,255,0.1);
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            color: #ffffff;
+            text-align: center;
+            backdrop-filter: blur(10px);
+        }
+        .noticia {
+            margin-bottom: 20px;
+            padding: 25px;
+            background: rgba(255,255,255,0.95);
+            border-radius: 15px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+            transition: all 0.3s ease;
+            border-left: 4px solid #667eea;
+        }
+        .noticia:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 40px rgba(0,0,0,0.2);
+        }
+        .noticia a {
+            color: #0d47a1;
+            text-decoration: none;
+            font-weight: bold;
+            font-size: 1.15em;
+            line-height: 1.3;
+            display: block;
+            margin-bottom: 10px;
+        }
+        .noticia a:hover {
+            color: #1565c0;
+        }
+        .descricao {
+            font-size: 0.95em;
+            color: #555;
+            margin-top: 10px;
+            line-height: 1.6;
+            max-height: 100px;
+            overflow: hidden;
+            position: relative;
+        }
+        .tempo {
+            font-size: 0.85em;
+            color: #666;
+            margin-top: 15px;
+            border-top: 1px solid #eee;
+            padding-top: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .fonte {
+            background: #667eea;
+            color: white;
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 0.8em;
+            font-weight: bold;
+        }
+        .erro-label {
+            margin-top: 30px;
+            padding: 20px;
+            background: rgba(244, 67, 54, 0.1);
+            color: #d32f2f;
+            border: 1px solid rgba(244, 67, 54, 0.3);
+            border-radius: 12px;
+            font-size: 0.95em;
+            backdrop-filter: blur(10px);
+        }
+        .refresh-btn {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 1em;
+            margin: 20px auto;
+            display: block;
+            transition: all 0.3s ease;
+        }
+        .refresh-btn:hover {
+            background: #45a049;
+            transform: scale(1.05);
+        }
+        .filter-container {
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        .filter-btn {
+            background: rgba(255,255,255,0.2);
+            color: white;
+            border: 2px solid rgba(255,255,255,0.3);
+            padding: 8px 16px;
+            margin: 5px;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .filter-btn:hover, .filter-btn.active {
+            background: rgba(255,255,255,0.3);
+            border-color: rgba(255,255,255,0.5);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>🌍 Últimas Notícias Internacionais - Tempo Real</h2>
+        
+        <div class="filter-container">
+            <button class="filter-btn active" data-fonte="todas">Todas</button>
+            <button class="filter-btn" data-fonte="BBC World">BBC</button>
+            <button class="filter-btn" data-fonte="CNN Brasil">CNN</button>
+            <button class="filter-btn" data-fonte="ISTOÉ">Isto É</button>
+            <button class="filter-btn" data-fonte="G1">G1</button>
+            <button class="filter-btn" data-fonte="Reuters">Reuters</button>
+        </div>
+
+        <div class="stats" id="stats"></div>
+        <div class="loading" id="loading">🔄 Carregando notícias...</div>
+        
+        <button class="refresh-btn" onclick="carregarNoticias()">🔄 Atualizar Notícias</button>
+        
+        <div id="noticias"></div>
+        <div id="erros" class="erro-label" style="display:none"></div>
+    </div>
+
+    <script>
+        const feedsRSS = [
+            { nome: 'BBC World', url: 'https://feeds.bbci.co.uk/news/world/rss.xml' },
+            { nome: 'CNN Brasil', url: 'https://www.cnnbrasil.com.br/feed/' },
+            { nome: 'ISTOÉ', url: 'https://istoe.com.br/feed/' },
+            { nome: 'G1', url: 'https://g1.globo.com/rss/g1/' },
+            { nome: 'Reuters', url: 'https://www.reuters.com/arc/outboundfeeds/rss/collection/world-news/' },
+            { nome: 'UOL', url: 'https://rss.uol.com.br/feed/noticias.xml' },
+            { nome: 'Folha', url: 'https://feeds.folha.uol.com.br/mundo/rss091.xml' },
+            { nome: 'Estadão', url: 'https://www.estadao.com.br/rss/internacional.xml' },
+            { nome: 'Veja', url: 'https://veja.abril.com.br/feed/' },
+            { nome: 'Época', url: 'https://epoca.globo.com/rss.xml' },
+            { nome: 'Carta Capital', url: 'https://www.cartacapital.com.br/feed/' },
+            { nome: 'El País Brasil', url: 'https://brasil.elpais.com/rss/brasil_portada.xml' }
+        ];
+
+        let todasAsNoticias = [];
+        let fonteAtiva = 'todas';
+
+        function calcularTempo(publicado) {
+            const agora = new Date();
+            const dataPub = new Date(publicado);
+            const diffMin = Math.floor((agora - dataPub) / 60000);
+            
+            if (isNaN(diffMin) || diffMin < 0) return "Recente";
+            if (diffMin < 1) return "Agora mesmo";
+            if (diffMin < 60) return `${diffMin} min atrás`;
+            
+            const diffHoras = Math.floor(diffMin / 60);
+            if (diffHoras < 24) return `${diffHoras} h atrás`;
+            
+            const diffDias = Math.floor(diffHoras / 24);
+            if (diffDias < 7) return `${diffDias} dia${diffDias > 1 ? 's' : ''} atrás`;
+            
+            const diffSemanas = Math.floor(diffDias / 7);
+            return `${diffSemanas} semana${diffSemanas > 1 ? 's' : ''} atrás`;
+        }
+
+        function limparTexto(texto) {
+            if (!texto) return '';
+            
+            // Remove tags HTML
+            const div = document.createElement('div');
+            div.innerHTML = texto;
+            let textoLimpo = div.textContent || div.innerText || '';
+            
+            // Remove caracteres especiais e excesso de espaços
+            textoLimpo = textoLimpo.replace(/\s+/g, ' ').trim();
+            
+            // Limita o tamanho da descrição
+            if (textoLimpo.length > 200) {
+                textoLimpo = textoLimpo.substring(0, 200) + '...';
+            }
+            
+            return textoLimpo;
+        }
+
+        function extrairConteudo(item, tag, namespaces = []) {
+            // Primeiro tenta buscar pela tag simples
+            let elemento = item.getElementsByTagName(tag)[0];
+            if (elemento) {
+                // Se contém CDATA, extrai o conteúdo
+                let conteudo = elemento.textContent || elemento.innerHTML;
+                if (conteudo.includes('<![CDATA[')) {
+                    conteudo = conteudo.replace(/<!\[CDATA\[|\]\]>/g, '');
+                }
+                return conteudo;
+            }
+            
+            // Se não encontrar, tenta pelos namespaces
+            for (const ns of namespaces) {
+                elemento = item.getElementsByTagNameNS(ns, tag)[0];
+                if (elemento) {
+                    let conteudo = elemento.textContent || elemento.innerHTML;
+                    if (conteudo.includes('<![CDATA[')) {
+                        conteudo = conteudo.replace(/<!\[CDATA\[|\]\]>/g, '');
+                    }
+                    return conteudo;
+                }
+            }
+            
+            return '';
+        }
+
+        async function processarFeed(feed) {
+            try {
+                console.log(`Processando feed: ${feed.nome} - ${feed.url}`);
+                
+                const proxies = [
+                    `https://api.allorigins.win/get?url=${encodeURIComponent(feed.url)}`,
+                    `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(feed.url)}`,
+                    `https://cors-anywhere.herokuapp.com/${feed.url}`,
+                    // Proxy adicional para feeds problemáticos
+                    `https://thingproxy.freeboard.io/fetch/${encodeURIComponent(feed.url)}`
+                ];
+
+                let data = null;
+                let sucesso = false;
+
+                for (let i = 0; i < proxies.length; i++) {
+                    try {
+                        console.log(`Tentando proxy ${i + 1} para ${feed.nome}`);
+                        const res = await fetch(proxies[i], {
+                            method: 'GET',
+                            headers: {
+                                'Accept': 'application/json, text/plain, */*',
+                                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+                            }
+                        });
+                        
+                        if (res.ok) {
+                            if (i === 3) { // thingproxy retorna texto direto
+                                data = await res.text();
+                            } else {
+                                const resposta = await res.json();
+                                data = resposta.contents || resposta.data || resposta;
+                            }
+                            
+                            if (data && data.trim()) {
+                                sucesso = true;
+                                console.log(`Sucesso com proxy ${i + 1} para ${feed.nome}`);
+                                break;
+                            }
+                        }
+                    } catch (e) {
+                        console.log(`Erro com proxy ${i + 1} para ${feed.nome}:`, e.message);
+                        continue;
+                    }
+                }
+
+                if (!sucesso || !data) {
+                    throw new Error(`Não foi possível acessar o feed: ${feed.nome}`);
+                }
+
+                // Limpa o XML de possíveis caracteres problemáticos
+                data = data.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '');
+                
+                const parser = new DOMParser();
+                const xml = parser.parseFromString(data, 'text/xml');
+                
+                // Verifica se há erro no XML
+                const parseError = xml.querySelector('parsererror');
+                if (parseError) {
+                    console.error(`Erro ao processar XML do ${feed.nome}:`, parseError.textContent);
+                    throw new Error(`Erro ao processar XML: ${feed.nome}`);
+                }
+
+                // Tenta diferentes formas de encontrar os itens
+                let items = xml.getElementsByTagName('item');
+                if (!items || items.length === 0) {
+                    items = xml.getElementsByTagName('entry'); // Para feeds Atom
+                }
+                
+                const noticias = [];
+
+                if (!items || items.length === 0) {
+                    console.warn(`Nenhum item encontrado no feed: ${feed.nome}`);
+                    return noticias;
+                }
+
+                console.log(`Encontrados ${items.length} items no feed ${feed.nome}`);
+
+                for (let i = 0; i < Math.min(items.length, 15); i++) {
+                    const item = items[i];
+                    
+                    let title = extrairConteudo(item, 'title') || 'Sem título';
+                    let link = extrairConteudo(item, 'link') || '#';
+                    
+                    // Para feeds Atom, o link pode estar no atributo href
+                    if (link === '#' || link === '') {
+                        const linkElement = item.getElementsByTagName('link')[0];
+                        if (linkElement && linkElement.getAttribute('href')) {
+                            link = linkElement.getAttribute('href');
+                        }
+                    }
+                    
+                    // Tenta extrair descrição de várias formas
+                    let desc = extrairConteudo(item, 'description') || 
+                              extrairConteudo(item, 'summary') ||
+                              extrairConteudo(item, 'content') ||
+                              extrairConteudo(item, 'encoded', [
+                                  'http://purl.org/rss/1.0/modules/content/'
+                              ]) ||
+                              extrairConteudo(item, 'content', [
+                                  'http://purl.org/rss/1.0/modules/content/',
+                                  'http://www.w3.org/2005/Atom'
+                              ]);
+                    
+                    desc = limparTexto(desc);
+                    
+                    let pubDate = extrairConteudo(item, 'pubDate') || 
+                                 extrairConteudo(item, 'published') ||
+                                 extrairConteudo(item, 'updated') ||
+                                 extrairConteudo(item, 'date') ||
+                                 new Date().toISOString();
+                    
+                    const timestamp = new Date(pubDate).getTime() || Date.now();
+
+                    // Só adiciona se tiver título válido
+                    if (title && title.trim() && title !== 'Sem título') {
+                        noticias.push({
+                            title: title.trim(),
+                            link: link.trim(),
+                            desc: desc,
+                            pubDate: pubDate,
+                            timestamp: timestamp,
+                            fonte: feed.nome
+                        });
+                    }
+                }
+
+                console.log(`Processadas ${noticias.length} notícias do feed ${feed.nome}`);
+                return noticias;
+
+            } catch (error) {
+                console.error(`Erro ao processar feed ${feed.nome}:`, error);
+                return [];
+            }
+        }
+
+        async function carregarNoticias() {
+            const noticiasContainer = document.getElementById('noticias');
+            const errosContainer = document.getElementById('erros');
+            const loadingContainer = document.getElementById('loading');
+            const statsContainer = document.getElementById('stats');
+            
+            loadingContainer.style.display = 'block';
+            errosContainer.style.display = 'none';
+            noticiasContainer.innerHTML = '';
+            
+            const feedsComErro = [];
+            todasAsNoticias = [];
+            let feedsProcessados = 0;
+
+            const promises = feedsRSS.map(async (feed) => {
+                try {
+                    const noticias = await processarFeed(feed);
+                    if (noticias.length === 0) {
+                        feedsComErro.push(feed.nome);
+                    } else {
+                        todasAsNoticias.push(...noticias);
+                    }
+                } catch (error) {
+                    feedsComErro.push(feed.nome);
+                } finally {
+                    feedsProcessados++;
+                    statsContainer.innerHTML = `📊 Processando feeds: ${feedsProcessados}/${feedsRSS.length}`;
+                }
+            });
+
+            await Promise.all(promises);
+
+            // Ordena por data de publicação
+            todasAsNoticias.sort((a, b) => b.timestamp - a.timestamp);
+            
+            // Remove duplicatas baseado no título
+            const noticiasUnicas = [];
+            const titulosVistos = new Set();
+            
+            for (const noticia of todasAsNoticias) {
+                const tituloLimpo = noticia.title.toLowerCase().replace(/[^a-z0-9]/g, '');
+                if (!titulosVistos.has(tituloLimpo)) {
+                    titulosVistos.add(tituloLimpo);
+                    noticiasUnicas.push(noticia);
+                }
+            }
+            
+            todasAsNoticias = noticiasUnicas;
+            
+            loadingContainer.style.display = 'none';
+            
+            // Atualiza estatísticas
+            const fontes = [...new Set(todasAsNoticias.map(n => n.fonte))];
+            statsContainer.innerHTML = `
+                📈 <strong>${todasAsNoticias.length}</strong> notícias carregadas de 
+                <strong>${fontes.length}</strong> fontes ativas
+            `;
+
+            exibirNoticias();
+
+            // Mostra erros se houver
+            if (feedsComErro.length > 0) {
+                errosContainer.style.display = 'block';
+                errosContainer.innerHTML = `
+                    ⚠️ <strong>Atenção:</strong> Não foi possível carregar notícias das seguintes fontes:
+                    <br><ul>${feedsComErro.map(f => `<li>${f}</li>`).join('')}</ul>
+                    <small>Isso pode ser devido a problemas de CORS ou indisponibilidade temporária.</small>
+                `;
+            }
+        }
+
+        function exibirNoticias() {
+            const noticiasContainer = document.getElementById('noticias');
+            
+            let noticiasFiltradas = todasAsNoticias;
+            if (fonteAtiva !== 'todas') {
+                noticiasFiltradas = todasAsNoticias.filter(n => n.fonte === fonteAtiva);
+            }
+            
+            noticiasContainer.innerHTML = '';
+            
+            if (noticiasFiltradas.length === 0) {
+                noticiasContainer.innerHTML = '<div class="noticia">Nenhuma notícia encontrada para o filtro selecionado.</div>';
+                return;
+            }
+            
+            noticiasFiltradas.slice(0, 30).forEach(noticia => {
+                const tempo = calcularTempo(noticia.pubDate);
+                const div = document.createElement('div');
+                div.className = 'noticia';
+                div.innerHTML = `
+                    <a href="${noticia.link}" target="_blank" rel="noopener noreferrer">
+                        ${noticia.title}
+                    </a>
+                    <div class="descricao">${noticia.desc}</div>
+                    <div class="tempo">
+                        <span>🕒 ${tempo}</span>
+                        <span class="fonte">${noticia.fonte}</span>
+                    </div>
+                `;
+                noticiasContainer.appendChild(div);
+            });
+        }
+
+        // Event listeners para filtros
+        document.querySelectorAll('.filter-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+                fonteAtiva = this.dataset.fonte;
+                exibirNoticias();
+            });
+        });
+
+        // Auto-refresh a cada 10 minutos
+        setInterval(carregarNoticias, 10 * 60 * 1000);
+
+        // Carrega as notícias quando a página é carregada
+        document.addEventListener('DOMContentLoaded', carregarNoticias);
+    </script>
+</body>
+</html>

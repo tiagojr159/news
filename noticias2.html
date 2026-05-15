@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Notícias da CNN Brasil</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f4f4f4;
+      padding: 20px;
+    }
+    h1 {
+      text-align: center;
+      color: #cc0000;
+    }
+    .noticia {
+      background: #fff;
+      padding: 15px;
+      margin: 10px auto;
+      border-radius: 8px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+      max-width: 800px;
+    }
+    .noticia h2 {
+      font-size: 1.2em;
+      margin-bottom: 10px;
+    }
+    .noticia p {
+      color: #333;
+    }
+    .noticia a {
+      color: #cc0000;
+      text-decoration: none;
+    }
+    .noticia a:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+  <h1>📰 Últimas Notícias da CNN Brasil</h1>
+  <div id="conteudo"></div>
+
+  <script>
+    const url = "https://api.allorigins.win/get?url=" + encodeURIComponent("https://admin.cnnbrasil.com.br/feed/");
+
+    fetch(url)
+      .then(response => {
+        if (response.ok) return response.json();
+        throw new Error("Erro ao carregar o feed.");
+      })
+      .then(data => {
+        const parser = new DOMParser();
+        const xml = parser.parseFromString(data.contents, "application/xml");
+        const items = xml.querySelectorAll("item");
+        const container = document.getElementById("conteudo");
+
+        items.forEach(item => {
+          const title = item.querySelector("title")?.textContent;
+          const link = item.querySelector("link")?.textContent;
+          const description = item.querySelector("description")?.textContent;
+
+          const div = document.createElement("div");
+          div.className = "noticia";
+          div.innerHTML = `
+            <h2><a href="${link}" target="_blank">${title}</a></h2>
+            <p>${description}</p>
+          `;
+          container.appendChild(div);
+        });
+      })
+      .catch(err => {
+        document.getElementById("conteudo").innerHTML = "<p>Erro ao carregar notícias. Tente novamente mais tarde.</p>";
+        console.error(err);
+      });
+  </script>
+</body>
+</html>
