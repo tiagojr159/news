@@ -5,7 +5,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Terra Girando com Manchetes</title>
-  <style>
+  <style> 
     body {
       margin: 0;
       padding: 0;
