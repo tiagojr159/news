@@ -592,6 +592,21 @@
     const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
     const isMobileDevice = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
     const isIosDevice = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+    const isAndroidDevice = /Android/i.test(navigator.userAgent);
+
+    function showManualInstallSteps() {
+      if (!pwaText || !pwaInstallButton) return;
+
+      if (isIosDevice) {
+        pwaText.textContent = 'No iPhone, o Safari nao permite instalar com clique direto. Toque em Compartilhar e escolha Adicionar a Tela de Inicio.';
+      } else if (isAndroidDevice) {
+        pwaText.textContent = 'Se o Chrome nao abriu a janela de instalacao, toque no menu de tres pontos e escolha Instalar app ou Adicionar a tela inicial.';
+      } else {
+        pwaText.textContent = 'Use o menu do navegador e escolha instalar aplicativo ou adicionar a tela inicial.';
+      }
+
+      pwaInstallButton.textContent = 'Entendi';
+    }
 
     function showPwaInstallPrompt() {
       if (!pwaPrompt || isStandalone || !isMobileDevice || sessionStorage.getItem('pwaInstallDismissed') === '1') return;
@@ -599,6 +614,9 @@
       if (isIosDevice && !pwaInstallEvent) {
         pwaText.textContent = 'No iPhone, toque no botao Compartilhar do Safari e escolha Adicionar a Tela de Inicio.';
         pwaInstallButton.textContent = 'Como instalar';
+      } else if (!pwaInstallEvent) {
+        pwaText.textContent = 'Toque para instalar este site como app. Se o navegador nao abrir a instalacao, vou mostrar o caminho manual.';
+        pwaInstallButton.textContent = 'Instalar app';
       }
 
       pwaPrompt.classList.add('is-active');
@@ -625,8 +643,11 @@
       }
 
       if (isIosDevice) {
-        pwaText.textContent = 'Safari: toque no icone de compartilhar na barra inferior e depois em Adicionar a Tela de Inicio.';
+        showManualInstallSteps();
+        return;
       }
+
+      showManualInstallSteps();
     });
 
     pwaDismissButton?.addEventListener('click', () => {
