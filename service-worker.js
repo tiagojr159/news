@@ -5,6 +5,8 @@ const APP_SHELL = [
   'noticias.php',
   'sobre.php',
   'app-icon.svg',
+  'app-icon-192.png',
+  'app-icon-512.png',
   'lua_fundo_transparente.avif',
   'lua_fundeo_transparente.avif'
 ];

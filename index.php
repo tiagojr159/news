@@ -268,6 +268,63 @@
       opacity: 1;
     }
 
+    .pwa-install {
+      position: fixed;
+      right: 14px;
+      bottom: calc(18px + env(safe-area-inset-bottom));
+      display: none;
+      width: min(300px, calc(100vw - 28px));
+      box-sizing: border-box;
+      padding: 12px;
+      border: 1px solid rgba(0, 212, 255, 0.45);
+      border-radius: 14px;
+      background: rgba(3, 10, 26, 0.92);
+      color: #e8fbff;
+      box-shadow: 0 18px 44px rgba(0, 0, 0, 0.45);
+      z-index: 1001;
+      backdrop-filter: blur(12px);
+    }
+
+    .pwa-install.is-active {
+      display: block;
+    }
+
+    .pwa-install strong {
+      display: block;
+      margin-bottom: 4px;
+      color: #00d4ff;
+      font-size: 14px;
+    }
+
+    .pwa-install p {
+      margin: 0;
+      font-size: 12px;
+      line-height: 1.35;
+    }
+
+    .pwa-install-actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .pwa-install-actions button {
+      flex: 1;
+      min-height: 38px;
+      border-radius: 10px;
+      border: 1px solid rgba(0, 212, 255, 0.72);
+      background: rgba(0, 212, 255, 0.14);
+      color: #dffaff;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .pwa-install-actions .pwa-dismiss {
+      border-color: rgba(255, 255, 255, 0.26);
+      background: rgba(255, 255, 255, 0.08);
+      color: #ffffff;
+    }
+
     @media (max-width: 768px) {
   .container {
     width: min(92vw, 640px);
@@ -366,6 +423,12 @@
   .info {
     margin-top: 14px;
     line-height: 1.25;
+  }
+
+  .pwa-install {
+    right: 14px;
+    bottom: calc(178px + env(safe-area-inset-bottom));
+    width: min(300px, calc(100vw - 28px));
   }
 }
 
@@ -499,10 +562,21 @@
     <button onclick="window.location.href='sobre.php'">ℹ️ Sobre</button>
   </div>
 
+  <div id="pwaInstallPrompt" class="pwa-install" role="dialog" aria-live="polite" aria-label="Instalar aplicativo">
+    <strong>Instalar Terra News</strong>
+    <p id="pwaInstallText">Adicione este site como aplicativo na tela inicial do celular.</p>
+    <div class="pwa-install-actions">
+      <button type="button" id="pwaInstallButton">Instalar app</button>
+      <button type="button" id="pwaDismissButton" class="pwa-dismiss">Agora nao</button>
+    </div>
+  </div>
+
 
 
 
   <script>
+    let pwaInstallEvent = null;
+
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
         navigator.serviceWorker.register('service-worker.js').catch((error) => {
@@ -510,6 +584,67 @@
         });
       });
     }
+
+    const pwaPrompt = document.getElementById('pwaInstallPrompt');
+    const pwaText = document.getElementById('pwaInstallText');
+    const pwaInstallButton = document.getElementById('pwaInstallButton');
+    const pwaDismissButton = document.getElementById('pwaDismissButton');
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+    const isMobileDevice = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+    const isIosDevice = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+
+    function showPwaInstallPrompt() {
+      if (!pwaPrompt || isStandalone || !isMobileDevice || sessionStorage.getItem('pwaInstallDismissed') === '1') return;
+
+      if (isIosDevice && !pwaInstallEvent) {
+        pwaText.textContent = 'No iPhone, toque no botao Compartilhar do Safari e escolha Adicionar a Tela de Inicio.';
+        pwaInstallButton.textContent = 'Como instalar';
+      }
+
+      pwaPrompt.classList.add('is-active');
+    }
+
+    window.addEventListener('beforeinstallprompt', (event) => {
+      event.preventDefault();
+      pwaInstallEvent = event;
+      showPwaInstallPrompt();
+    });
+
+    window.addEventListener('appinstalled', () => {
+      pwaPrompt?.classList.remove('is-active');
+      sessionStorage.setItem('pwaInstallDismissed', '1');
+    });
+
+    pwaInstallButton?.addEventListener('click', async () => {
+      if (pwaInstallEvent) {
+        pwaInstallEvent.prompt();
+        await pwaInstallEvent.userChoice;
+        pwaInstallEvent = null;
+        pwaPrompt?.classList.remove('is-active');
+        return;
+      }
+
+      if (isIosDevice) {
+        pwaText.textContent = 'Safari: toque no icone de compartilhar na barra inferior e depois em Adicionar a Tela de Inicio.';
+      }
+    });
+
+    pwaDismissButton?.addEventListener('click', () => {
+      sessionStorage.setItem('pwaInstallDismissed', '1');
+      pwaPrompt?.classList.remove('is-active');
+    });
+
+    document.addEventListener('pointerdown', (event) => {
+      if (!pwaPrompt?.classList.contains('is-active')) return;
+      if (pwaPrompt.contains(event.target)) return;
+
+      sessionStorage.setItem('pwaInstallDismissed', '1');
+      pwaPrompt.classList.remove('is-active');
+    });
+
+    window.addEventListener('load', () => {
+      setTimeout(showPwaInstallPrompt, 1200);
+    });
 
     const canvas = document.getElementById('earthCanvas');
     const ctx = canvas.getContext('2d');
