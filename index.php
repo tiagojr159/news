@@ -4,6 +4,14 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#00d4ff" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-title" content="Terra News" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="icon" href="app-icon.svg" type="image/svg+xml" />
+  <link rel="apple-touch-icon" href="app-icon.svg" />
   <title>Terra Girando com Manchetes</title>
   <style> 
     body {
@@ -314,28 +322,45 @@
   }
 
   .fixed-buttons {
-    right: 10px;
+    left: 50%;
+    right: auto;
     top: auto;
     bottom: calc(76px + env(safe-area-inset-bottom));
-    transform: none;
-    gap: 10px;
+    transform: translateX(-50%);
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    width: min(300px, calc(100vw - 28px));
   }
 
   .fixed-buttons button {
-    padding: 6px 12px;
-    font-size: 11px;
+    width: 100%;
+    min-height: 42px;
+    box-sizing: border-box;
+    padding: 8px 10px;
+    border-radius: 12px;
+    font-size: 12px;
   }
 
   .voice-select {
-    width: 132px;
-    font-size: 11px;
-    padding: 6px 8px;
+    width: 100%;
+    min-height: 42px;
+    box-sizing: border-box;
+    padding: 8px 10px;
+    border-radius: 12px;
+    font-size: 12px;
   }
 
   .voice-status {
-    width: 132px;
-    font-size: 10px;
-    padding: 5px 6px;
+    width: 100%;
+    min-height: 42px;
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 8px 10px;
+    border-radius: 12px;
+    font-size: 11px;
   }
 
   .info {
@@ -478,6 +503,14 @@
 
 
   <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('service-worker.js').catch((error) => {
+          console.warn('Service worker nao registrado:', error);
+        });
+      });
+    }
+
     const canvas = document.getElementById('earthCanvas');
     const ctx = canvas.getContext('2d');
     const centerX = canvas.width / 2;

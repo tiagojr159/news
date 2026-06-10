@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Terra News">
+  <defs>
+    <radialGradient id="space" cx="50%" cy="42%" r="70%">
+      <stop offset="0" stop-color="#1a2b5f"/>
+      <stop offset="1" stop-color="#050714"/>
+    </radialGradient>
+    <radialGradient id="earth" cx="38%" cy="30%" r="72%">
+      <stop offset="0" stop-color="#77e5ff"/>
+      <stop offset="0.44" stop-color="#1179c7"/>
+      <stop offset="1" stop-color="#082d73"/>
+    </radialGradient>
+    <filter id="glow" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="14" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  <rect width="512" height="512" rx="108" fill="url(#space)"/>
+  <circle cx="256" cy="256" r="162" fill="url(#earth)" filter="url(#glow)"/>
+  <path d="M156 222c38-35 81-54 127-55 38-1 68 11 92 32-27 9-53 15-78 17-31 2-55 0-75 10-22 11-38 31-66 47-8-15-10-32 0-51Z" fill="#33d17a" opacity=".94"/>
+  <path d="M220 350c15-28 40-43 74-47 29-3 58 3 91-9-16 37-53 68-98 78-25 5-48 0-67-22Z" fill="#2fbf71" opacity=".9"/>
+  <path d="M142 294c39 11 75 13 109 8 27-4 55-14 86-4-28 27-66 44-109 44-37 0-67-16-86-48Z" fill="#ffd166" opacity=".22"/>
+  <path d="M108 142h296" stroke="#00d4ff" stroke-width="18" stroke-linecap="round" opacity=".78"/>
+  <path d="M86 390h340" stroke="#00d4ff" stroke-width="18" stroke-linecap="round" opacity=".64"/>
+  <circle cx="126" cy="112" r="8" fill="#fff"/>
+  <circle cx="408" cy="220" r="6" fill="#fff"/>
+  <circle cx="374" cy="106" r="5" fill="#fff"/>
+</svg>
